@@ -208,7 +208,7 @@ class ProcessorThread(threading.Thread):
                 # Thread safety; we want to make sure we don't try
                 # to change the frame file in the middle of a write.
                     if self._frame_file is not None:
-                        self._frame_file.write('{}\n'.format(msg))
+                        self._frame_file.write('{}\n'.format(raw_msg))
                 continue
         
             if msg[u'category'] == u'tracker':
