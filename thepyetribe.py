@@ -699,77 +699,35 @@ class EyeTribeServer(object):
         '''
         if self.push:
             raise EyeTribeError(1001)
-        try:
-            result = self._est_cpu_minus_tracker_time(
-                    num_samples, cpu_diff_tolerance, sample_interval
-                    )
-        except EyeTribeError as err_:
-            if err_[0] == 1002:
-                result = self._est_cpu_minus_tracker_time(
-                    num_samples, cpu_diff_tolerance, sample_interval
-                    )
-            else:
-                raise err_
-        return result
-    
-    def _est_cpu_minus_tracker_time(
-            self,
-            num_samples,
-            cpu_diff_tolerance,
-            sample_interval,
-            ):
-        '''Return the difference between the internal clocks of the
-        computer and the tracker. Actually does the work of
-        est_cpu_minus_tracker_time.
-        
-        Arguments:
-        See est_cpu_minus_tracker_time.
-            
-        Returns:
-        The mean difference between cpu timestamp and tracker timestamp
-            in seconds.
-            
-        Errors:
-        EyeTribeError if the hour advances while the function is in the
-            middle of running.
-        '''
-        yr_mnth_day_hr = datetime.now().isoformat(' ').split(':')[0]
         before_times = []
         tracker_times = []
         after_times = []
         # We save all the processing for later because we want
         # minimal additional computation between the cpu calls.
+        # We actually get one more frame than the specified number to
+        # simplify checking for duplicates.
         for _ in range(num_samples+1):
-            before_times.append(datetime.now().isoformat(' '))
+            before_times.append(datetime.now())
             tracker_times.append(self.frame[u'timestamp']) 
-            after_times.append(datetime.now().isoformat(' '))
+            after_times.append(datetime.now())
             sleep(sample_interval)
         avg_cpu_minus_tracker_time = 0
+        num_frames_used = 0
         for i in range(num_samples):
-            if tracker_times[i] == tracker_times[i+1]:
-                # If it is a duplicate, skip it.
+            cpu_td = after_times[i]-before_times[i]
+            # The below comparison would hit an IndexError if we did
+            # not take one extra frame.
+            if (tracker_times[i] == tracker_times[i+1]
+                or cpu_td.total_seconds() > cpu_diff_tolerance):
+                # If it is a duplicate or cpu calls are too far apart, skip
                 continue
-            before_ls = str(before_times[i]).split(':')
-            tracker_ls = tracker_times[i].split(':')
-            after_ls = str(after_times[i]).split(':')
-            if (before_ls[0] != yr_mnth_day_hr
-                or tracker_ls[0] != yr_mnth_day_hr
-                or after_ls[0] != yr_mnth_day_hr):
-                # If this ever happens, it means the hour advanced
-                # in the middle of the test. Instead of trying to
-                # account for that, we assume it will almost never
-                # happen, and if it does, it can't possibly happen
-                # again for another hour. So we raise an error that
-                # is handled by the calling function.
-                raise EyeTribeError(1002)
-            # Convert minutes to seconds and add the two.
-            before = float(before_ls[-2])*60 + float(before_ls[-1])
-            tracker = float(tracker_ls[-2])*60 + float(tracker_ls[-1])
-            after = float(after_ls[-2])*60 + float(after_ls[-1])
-            if after-before > cpu_diff_tolerance:
-                continue
-            avg_cpu_minus_tracker_time += ((before+after)/2 - tracker)
-        avg_cpu_minus_tracker_time /= num_samples
+            tracker = datetime.strptime(
+                    tracker_times[i], '%Y-%m-%d %H:%M:%S.%f'
+                    )
+            cpu_tracker_td = before_times[i] - tracker
+            avg_cpu_minus_tracker_time += cpu_tracker_td.total_seconds()
+            num_frames_used += 1
+        avg_cpu_minus_tracker_time /= num_frames_used
         return avg_cpu_minus_tracker_time
 
     
@@ -780,8 +738,6 @@ class EyeTribeError(Exception):
     err_msg_dict = {
             1001: 'Cannot estimate cpu-tracker time difference while '\
                   'in push mode.',
-            1002: 'Cpu-tracker time difference estimation failed '\
-                  'because hour advanced.',
             2001: 'You cannot set this value, it is determined by the '\
                   'EyeTribeServer.',
             3001: 'You cannot use the get method in an EyeTribeQueue. Use'\
