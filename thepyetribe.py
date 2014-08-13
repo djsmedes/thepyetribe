@@ -481,6 +481,14 @@ class EyeTribeServer(object):
     
     @property
     def trackerstate(self):
+        '''
+        Code    State                         Description
+        0       TRACKER_CONNECTED             Tracker device is detected and working
+        1       TRACKER_NOT_CONNECTED         Tracker device is not detected
+        2       TRACKER_CONNECTED_BADFW       Tracker device is detected but not working due to wrong/unsupported firmware
+        3       TRACKER_CONNECTED_NOUSB3      Tracker device is detected but not working due to unsupported USB host
+        4       TRACKER_CONNECTED_NOSTREAM    Tracker device is detected but not working due to no stream could be received
+        '''
         return self._get_value(u'trackerstate')
     @trackerstate.setter
     def trackerstate(self, value_):
@@ -700,9 +708,13 @@ class EyeTribeServer(object):
         Errors:
         EyeTribeError with code 1001 if we attempt to use this function
             while in push mode.
+        EyeTribeError with code 1002 if we attempt to use this function
+            when the tracker is not connected and working.
         '''
         if self.push:
             raise EyeTribeError(1001)
+        if self.trackerstate != 0:
+            raise EyeTribeError(1002)
         before_times = []
         tracker_times = []
         after_times = []
@@ -731,7 +743,7 @@ class EyeTribeServer(object):
             cpu_tracker_td = before_times[i] - tracker
             avg_cpu_minus_tracker_time += cpu_tracker_td.total_seconds()
             num_frames_used += 1
-        avg_cpu_minus_tracker_time /= num_frames_used
+        avg_cpu_minus_tracker_time = (avg_cpu_minus_tracker_time*1.0)/(num_frames_used*1.0)
         return avg_cpu_minus_tracker_time
 
     
@@ -742,6 +754,8 @@ class EyeTribeError(Exception):
     err_msg_dict = {
             1001: 'Cannot estimate cpu-tracker time difference while '\
                   'in push mode.',
+            1002: 'Cannot estimate cpu-tracker time difference unless '\
+                  'tracker is properly connected',
             2001: 'You cannot set this value, it is determined by the '\
                   'EyeTribeServer.',
             3001: 'You cannot use the get method in an EyeTribeQueue. Use'\
