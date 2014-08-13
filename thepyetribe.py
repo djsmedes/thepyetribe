@@ -276,7 +276,7 @@ class EyeTribeServer(object):
         # Make and start the processor thread.
         self.processor_thr = ProcessorThread(
                 raw_data_stream=self.raw_q,
-                set_current_frame=lambda frm: self._current_frame = frm,
+                set_current_frame=self._set_current_frame,
                 calibration_q=self.calibration_q,
                 tracker_q=self.tracker_q,
                 update_states=self._update_states
@@ -289,6 +289,10 @@ class EyeTribeServer(object):
                 q=self.raw_q
                 )
         self.listener_thr.start()
+        
+    def _set_current_frame(self, frame_):
+        '''Exists to be passed to ProcessorThread'''
+        self._current_frame = frame_
     
     def _update_states(self, msg_dict):
         '''Notifies all functions waiting on a state change in the
