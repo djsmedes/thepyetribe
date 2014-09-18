@@ -5,6 +5,10 @@ ehthumbs.db
 # Folder config file
 Desktop.ini
 
+# eclipse junk
+.project
+.ppydevproject
+
 # Recycle Bin used on file shares
 $RECYCLE.BIN/
 
