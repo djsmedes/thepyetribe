@@ -1,13 +1,12 @@
+# JetBrains
+.idea/*
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
 
 # Folder config file
 Desktop.ini
-
-# eclipse junk
-.project
-.ppydevproject
 
 # Recycle Bin used on file shares
 $RECYCLE.BIN/
@@ -30,7 +29,8 @@ $RECYCLE.BIN/
 .LSOverride
 
 # Icon must ends with two \r.
-Icon
+Icon
+
 
 # Thumbnails
 ._*
